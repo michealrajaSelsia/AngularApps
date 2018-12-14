@@ -1,0 +1,113 @@
+using System;
+using System.Configuration;
+using System.IO;
+using System.Net.Mail;
+using System.Text;
+
+namespace TicketSystemReport
+{
+    public class SendEmail
+    {
+        public void SendMail(string FolderNametoFetchAttachment, string filename)
+        {
+            try
+            {
+                System.Net.Mail.Attachment attachment;
+                SmtpClient smtp = new SmtpClient();
+                smtp.UseDefaultCredentials = false;
+                smtp.Host = Convert.ToString(System.Configuration.ConfigurationManager.AppSettings["SMTPRELAY"]);
+                smtp.Port = 25;
+                System.Net.NetworkCredential credentials = new System.Net.NetworkCredential();
+
+                credentials.UserName = ConfigurationManager.AppSettings["MailUserName"]; //"IE-Operations@comcast.com";
+                credentials.Password = ConfigurationManager.AppSettings["MailPassword"];// string.Empty;
+                smtp.Credentials = credentials;
+                string SourceDirectory = ConfigurationManager.AppSettings["SourcePath"];
+                MailMessage mm = new MailMessage();
+                string mailFrom = ConfigurationManager.AppSettings["MailFrom"];
+                mm.From = new MailAddress(mailFrom);
+                string toAddressesForWeeklyReport = ConfigurationManager.AppSettings["MailToWeeklyReport"];
+                string ccAddressesForWeeklyReport = ConfigurationManager.AppSettings["MailCCWeeklyReport"];
+
+                string toAddressesForMonthyReport = ConfigurationManager.AppSettings["MailToMonthyReport"];
+                string ccAddressesForMonthyReport = ConfigurationManager.AppSettings["MailCCMonthyReport"];
+
+
+                if (filename.Contains("WeeklyReportCompletedByAgents") == true)
+                {
+                    foreach (var address in toAddressesForWeeklyReport.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        mm.To.Add(address);
+                    }
+
+                    foreach (var ccaddress in ccAddressesForWeeklyReport.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        mm.CC.Add(ccaddress);
+                    }
+                    mm.Subject = "WeeklyReport Tickets Completed - ByAgents";
+                    mm.Body = ReadMailContent(ConfigurationManager.AppSettings["MailContentPathForWeeklyCompleted"]);
+
+                }
+                if (filename.Contains("WeeklySummaryReport_ByDueDate") == true)
+                {
+                    foreach (var address in toAddressesForWeeklyReport.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        mm.To.Add(address);
+                    }
+
+                    foreach (var ccaddress in ccAddressesForWeeklyReport.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        mm.CC.Add(ccaddress);
+                    }
+                    mm.Subject = "WeeklyReport Tickets Completed Within Due Date and Past Due Date - ByAgents";
+                    mm.Body = ReadMailContent(ConfigurationManager.AppSettings["MailContentPathForWeeklyCompleted_DueDate"]);
+
+                }
+                if (filename.Contains("MonthlyTicketSummaryReport_") == true)
+                {
+                    foreach (var address in toAddressesForMonthyReport.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        mm.To.Add(address);
+                    }
+                    foreach (var ccaddress in ccAddressesForMonthyReport.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        mm.CC.Add(ccaddress);
+                    }
+                    mm.Subject = "Monthly Summary of Tickets Completed - ByAgents";
+                    mm.Body = ReadMailContent(ConfigurationManager.AppSettings["MailContentPathForMonthlyCompletedTickets"]);
+                }
+                attachment = new Attachment(SourceDirectory + FolderNametoFetchAttachment + "\\" + filename + ".xlsx");
+                mm.Attachments.Add(attachment);
+                mm.IsBodyHtml = true;
+                smtp.Send(mm);
+            }
+            catch (Exception ex)
+            {
+                LoggingFile(ex.Message);
+            }
+        }
+        public static void LoggingFile(string Message)
+        {
+            LogFile obj = new LogFile();
+            obj.LogWriter(Message);
+        }
+
+
+        public string ReadMailContent(string mailContentPath)
+        {
+            string mailContent;
+            // var fileStream = new FileStream(@"c:\users\604404\WeeklyCompletedTicketsByAgent.txt", FileMode.Open, FileAccess.Read);
+            var fileStream = new FileStream(mailContentPath, FileMode.Open, FileAccess.Read);
+
+            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+            {
+                mailContent = streamReader.ReadToEnd();
+            }
+            return mailContent;
+
+        }
+    }
+}
+
+
+
